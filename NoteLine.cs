@@ -13,13 +13,15 @@ namespace RhythmGame
     {
         private List<Note> noteList;
         public int songPosition;
-        private int? _holdDuration;
-
-        public int? lineHeight;
         
-        private bool _isHoldType = false;
-        public bool isActive = false;
+        public int? lineHeight;
 
+        public bool isActive = false;
+        private bool _isMiss = false;
+        public bool isMiss { get { return _isMiss; } }
+
+
+        private int? _holdDuration;
         public int? HoldDuration
         {
             get { return _holdDuration; }
@@ -38,10 +40,13 @@ namespace RhythmGame
                 }
             }
         }
+        private bool _isHoldType = false;
         public bool isHoldType
         {
             get { return _isHoldType; }
         }
+
+
 
         //FIRST CONSTRUCTER, USED WHEN NOTE IS NOT TYPE OF HOLD NOTE
         public NoteLine(int timeStamp, List<Note> noteListArg)
@@ -78,7 +83,7 @@ namespace RhythmGame
                 isActive = true;
                 instanceActive++;
             }
-                
+            
             foreach (Note note in noteList)
             {
                 note.Location = new Point(note.Location.X, newY);
@@ -124,12 +129,12 @@ namespace RhythmGame
                 if (GameForm.keysPressed[note.KeyBind].isDown)
                     trueCount++;
             }
+            isActive = false;
             if (trueCount == noteList.Count)
             {
-                isActive = false;
                 return true;
             }
-                
+            _isMiss = true;
             return false;
         }
 
@@ -148,6 +153,7 @@ namespace RhythmGame
             foreach (GtrButton btn in GameForm.keysPressed.Values)
                 btn.isHolding = false;
 
+            _isMiss = true;
             isActive = false;
             return false;
         }
