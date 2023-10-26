@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -10,13 +11,14 @@ namespace RhythmGame
 {
     internal class NoteLine
     {
+        private List<Note> noteList;
         public int songPosition;
         private int? _holdDuration;
-        public int? lineHeight;
-        private List<Note> noteList;
 
-        private bool _isLong = false;
-        public bool isActive = true;
+        public int? lineHeight;
+        
+        private bool _isHoldType = false;
+        public bool isActive = false;
 
         public int? HoldDuration
         {
@@ -26,19 +28,19 @@ namespace RhythmGame
                 if (value == null)
                 {
                     _holdDuration = null;
-                    _isLong = false;
+                    _isHoldType = false;
                 }
                 else
                 {
                     _holdDuration = int.Parse(value.ToString());
                     lineHeight = 100 * (_holdDuration * 2 / 200);
-                    _isLong = true;
+                    _isHoldType = true;
                 }
             }
         }
-        public bool IsLong
+        public bool isHoldType
         {
-            get { return _isLong; }
+            get { return _isHoldType; }
         }
 
         //FIRST CONSTRUCTER, USED WHEN NOTE IS NOT TYPE OF HOLD NOTE
@@ -46,6 +48,7 @@ namespace RhythmGame
         {
             songPosition = timeStamp;
             noteList = noteListArg;
+            HoldDuration = null;
         }
         //SECOND CONSTRUCTER, USED WHEN NOTE IS TYPE OF HOLD NOTE
         public NoteLine(int timeStamp, List<Note> noteListArg, int hldDrtn)
@@ -55,36 +58,61 @@ namespace RhythmGame
             HoldDuration = hldDrtn;
         }
 
+        //INSERTS THE NOTES TO THE FORM
         public void InsertToControl(Form form)
         {
             foreach (Note note in noteList)
             {
-                if (_isLong)
-                    form.Controls.Add(note.Line = new LongNote(_holdDuration));
+                if (_isHoldType)
+                    form.Controls.Add(note.Line = new HoldLine(Convert.ToInt32(_holdDuration)));
                 form.Controls.Add(note);
             }
         }
-        public void DisposeFromControl(Form form)
+
+        //
+        int instanceActive = 0;
+        public void Animate(Form form, int newY, int endY)
         {
-            foreach (Note note in noteList)
+            if (!isActive && newY >= endY - 50 && instanceActive < 1)
             {
-                form.Controls.Remove(note); //DISPOSES AND REMOVES THE NOTE FROM THE CONTROL AFTER REACHING ENDPOINT 
-                note.Dispose();             //ONLY EXECUTES WHEN NOTELINE IS OF TYPE LONG NOTE.
-                if (_isLong)
-                {
-                    if (!isActive)
-                        note.Line.BackColor = Color.Gray;
-                    note.Line.AnimateDispose(form);
-                }
+                isActive = true;
+                instanceActive++;
             }
-        }
-        public void AnimateLine(int newY, int endY)
-        {
+                
             foreach (Note note in noteList)
             {
                 note.Location = new Point(note.Location.X, newY);
-                if (_isLong && newY <= endY)
+                if (_isHoldType && newY <= endY)
                     note.Line.Location = new Point(note.Line.Location.X, note.Location.Y - note.Line.Size.Height);
+
+                //WILL DISPOSE THE NOTE FROM THE FORM AFTER REACHING THE END Y LOCATION
+                if (newY >= endY) 
+                {
+                    if (!_isHoldType)
+                        GameForm.highwayList.Remove(this);
+                    //DISPOSES AND REMOVES THE NOTE FROM THE FORM AFTER REACHING ENDPOINT 
+                    form.Controls.Remove(note); 
+                    note.Dispose();
+
+                    //ANIMATES THE LINE OF THE HOLD NOTE AFTER COMPLETELY DISPOSING IT
+                    if (_isHoldType)
+                    {
+                        if (!isActive && instanceActive < 2)
+                        {
+                            note.Line.BackColor = Color.Gray;
+                            instanceActive++;
+                        }
+                            
+                        note.Line.Size = new Size(10, note.Line.Height - GameForm.deltaTime);
+                        note.Line.Location = new Point(note.Line.Location.X, 500 - note.Line.Size.Height);
+                        if (note.Line.Size.Height < 10)
+                        {
+                            form.Controls.Remove(note.Line);
+                            note.Line.Dispose();
+                            GameForm.highwayList.Remove(this);
+                        }
+                    }
+                }
             }
         }
 
@@ -93,11 +121,15 @@ namespace RhythmGame
             int trueCount = 0;
             foreach (Note note in noteList)
             {
-                if (note.Button.isDown)
+                if (GameForm.keysPressed[note.KeyBind].isDown)
                     trueCount++;
             }
             if (trueCount == noteList.Count)
+            {
+                isActive = false;
                 return true;
+            }
+                
             return false;
         }
 
@@ -106,11 +138,17 @@ namespace RhythmGame
             int trueCount = 0;
             foreach (Note note in noteList)
             {
-                if (note.Button.isHolding)
+                if (GameForm.keysPressed[note.KeyBind].isHolding)
                     trueCount++;
             }
-            if (trueCount == noteList.Count)
+            if (trueCount == noteList.Count && GameForm.holdElpsd <= _holdDuration)
                 return true;
+
+            Console.WriteLine("False!");
+            foreach (GtrButton btn in GameForm.keysPressed.Values)
+                btn.isHolding = false;
+
+            isActive = false;
             return false;
         }
     }
