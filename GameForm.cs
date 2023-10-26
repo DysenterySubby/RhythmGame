@@ -16,14 +16,13 @@ namespace RhythmGame
     {
         //Temporary: chart for the level
         private string[,] Chart = new string[,]
-        {{"3000", "g", "r", "b"}, {"3200", "g", "r", "b"}, {"3400", "g", "r", "b"}, {"3600", "g", "r", "b"}, {"3800","g", "r", "b"},
-        {"4000", "y", "o", "b"},{"4200","y", "o", "b"}, {"4400", "y", "o", "b"}, {"4600", "y", "o", "b"}, {"5000", "y", "o", "b"},
-        {"5200", "g", null, null},{"5400", "g", null, null}, {"5600", null, "r", null}, {"5800", null, "r", null}, {"6100",null, "r", null},
-        {"6300", "g", null, null},{"6500", "g", null, null}, {"6700", null, "r", null}, {"6900", null, "r", null}, {"7100:200","g", null, null}};
+        {{"3000", "g", null, null}, {"3200", "g", null, null}, {"3400", null, "r", null}, {"3600", null, "r", null}, {"3800", null, null, "y"},
+        {"4000", "r", null, null},{"4200","r", null, null }, {"4400", "y", null, null}, {"4600", "y", null, null}, {"5000", "b", null, null},
+        {"5200", "g", null, null},{"5400", "g", null, null}, {"5600", null, "r", null}, {"5800", null, "r", null}, {"6100",null, "y", null},
+        {"6300", "r", null, null},{"6500", "r", null, null}, {"6700", null, "y", null}, {"6900", null, "y", null}, {"7100:200","b", null, null}};
 
 
-        //Int temp score tracker
-        int score;
+        
 
         //Soundplayer object
         private SoundPlayer player;
@@ -64,9 +63,13 @@ namespace RhythmGame
 
 
         bool songPlay = false;
-
-
+        //Int temp score tracker
         Label scoreText = new Label();
+        int score;
+        Label streakText = new Label();
+        int streak;
+
+
         public GameForm()
         {
             //Initializes Form's Configuration
@@ -86,6 +89,17 @@ namespace RhythmGame
                 this.Controls.Add(newBtn);
             }
 
+            //Initializes Extra Userinterface
+            scoreText.AutoSize = true;
+            scoreText.Font = new Font("Algerian", 21, FontStyle.Bold);
+            scoreText.Text = "SCORE: ";
+            this.Controls.Add(scoreText);
+
+            streakText.AutoSize = true;
+            streakText.Font = new Font("Algerian", 21, FontStyle.Bold);
+            streakText.Location = new Point(0, scoreText.Height);
+            this.Controls.Add(streakText);
+
             //Initializes Core Game Events
             gameTimer = new Timer();
             gameTimer.Interval = 30;
@@ -94,8 +108,8 @@ namespace RhythmGame
             this.KeyUp += new KeyEventHandler(ButtonUpEvent);
             this.Load += new EventHandler(GameOnLoad);
 
-            scoreText.Text = "SCORE: ";
-            this.Controls.Add(scoreText);
+            
+            
         }
 
         //Loads and generate game objects from Charts
@@ -107,6 +121,7 @@ namespace RhythmGame
             gameTimer.Start();
             program_stpWtch.Start();
         }
+
         private void GameTimerEvent(object sender, EventArgs e)
         {
             holdElpsd = holdButton_stpWtch.ElapsedMilliseconds;
@@ -140,18 +155,24 @@ namespace RhythmGame
                 float progress = (float)(noteLine.songPosition - gameRunTime) / moveDuration;
                 int noteY = (int)Math.Round(0 + ((0 - endY) * progress));
                 //Input and Scoring Evaluation.
-                #region
+
                 //NORMAL NOTE CHECK INPUT
                 if (noteLine.isActive && !noteLine.isHoldType && noteLine.ButtonDown())
                 {
                     score++;
+                    streak++;
                 }
+                
                 //HOLD NOTE INPUT CHECK
                 else if (noteLine.isActive && noteLine.isHoldType && noteLine.ButtonHold())
                 {
-                    score++;
+                    score += Convert.ToInt32(holdElpsd / 100);
                 }
-                #endregion
+
+                if (noteLine.isMiss)
+                    streak = 0;
+
+
                 noteLine.Animate(this, noteY, endY);
             }
 
@@ -162,6 +183,7 @@ namespace RhythmGame
             }
             previous_frameTime = gameRunTime;
             scoreText.Text = $"Score: {score}";
+            streakText.Text = $"Streak: {streak}";
         }
         
         private void ButtonDownEvent(object sender, KeyEventArgs e)
