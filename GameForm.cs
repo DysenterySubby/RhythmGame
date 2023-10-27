@@ -22,34 +22,30 @@ namespace RhythmGame
         {"6300", "r", null, null},{"6500", "r", null, null}, {"6700", null, "y", null}, {"6900", null, "y", null}, {"7100:200","b", null, null}};
 
 
-        
-
         //Soundplayer object
         private SoundPlayer player;
 
         //Main Timer Event. For game's frame updating.
-        Timer gameTimer;
+        private Timer gameTimer;
 
         //List of file paths of all the button's image.
-        List<string> imageLoc = new List<string>();
+        private List<string> imageLoc = new List<string>();
 
         //------------------STATIC------------------------
         //Dictionary of all the Button, values are are accessed using "Keys Object".
-        public static Dictionary<Keys?, GtrButton> keysPressed = new Dictionary<Keys?, GtrButton>();
+        public static Dictionary<Keys?, GtrButton> KeysPressed = new Dictionary<Keys?, GtrButton>();
 
         //Stopwatch object. Used for measuring program runtime, mainly used for song timing and synchronization.
         private Stopwatch program_stpWtch = new Stopwatch();
+        private long gameRunTime;
 
         //------------------STATIC------------------------
         //Delta time is used for calculating frame dependent U.I objects.
-        public static int deltaTime = 0;
-
-        private int gameRunTime;
-        private int previous_frameTime;
+        public static long DeltaTime = 0;
+        private long previous_frameTime;
         
-
         //Stopwatch object. Used for measuring player's button holding.
-        Stopwatch holdButton_stpWtch = new Stopwatch();
+        private Stopwatch holdButton_stpWtch = new Stopwatch();
         public static long holdElpsd;
 
         //------------------STATIC------------------------
@@ -63,12 +59,32 @@ namespace RhythmGame
 
 
         bool songPlay = false;
+
         //Int temp score tracker
         Label scoreLbl = new Label();
         int score;
         Label streakLbl = new Label();
         int streak;
         Label debugLbl = new Label();
+
+        private int multiplier
+        {
+            get
+            {
+                if (streak <= 10)
+                    return 2;
+                else if (streak <= 20)
+                    return 4;
+                else if (streak <= 30)
+                    return 6;
+                else if (streak <= 40)
+                    return 8;
+                else if (streak <= 50)
+                    return 10;
+                else
+                    return 1;
+            }
+        }
 
 
         public GameForm()
@@ -86,7 +102,7 @@ namespace RhythmGame
             foreach (var imageLoc in imageLoc)
             {
                 GtrButton newBtn = new GtrButton(imageLoc);
-                keysPressed.Add(GtrButton.GetKey(newBtn), newBtn);
+                KeysPressed.Add(GtrButton.GetKey(newBtn), newBtn);
                 this.Controls.Add(newBtn);
             }
 
@@ -131,8 +147,8 @@ namespace RhythmGame
         {
             //Variables used for calculations
             holdElpsd = holdButton_stpWtch.ElapsedMilliseconds;
-            gameRunTime = Convert.ToInt32(program_stpWtch.ElapsedMilliseconds);
-            deltaTime = gameRunTime - previous_frameTime;
+            gameRunTime = program_stpWtch.ElapsedMilliseconds;
+            DeltaTime = gameRunTime - previous_frameTime;
 
             if (!songPlay && gameRunTime > 3000)
             {
@@ -163,19 +179,27 @@ namespace RhythmGame
                 int noteY = (int)Math.Round(0 + ((0 - endY) * progress));
 
                 //---INPUT AND SCORING EVALUATION---
+
                 //Single Note Input Check
                 if (noteLine.isActive && !noteLine.isHoldType && noteLine.ButtonDown())
                 {
-                    score++;
                     streak++;
+                    score += 1 * multiplier;
                 }
                 
                 //Hold Note Input Check
                 else if (noteLine.isActive && noteLine.isHoldType && noteLine.ButtonHold())
                 {
-                    if(noteLine.InstanceCalls < 3)
+                    //Computation for how long the player should hold the note
+                    double noteHoldElpsd = (double)(holdElpsd + DeltaTime) / 100;
+                    double noteHoldTime = Math.Ceiling((double)holdElpsd / 100);
+
+                    //Increase streak on the very first time collision is detected
+                    if (noteLine.InstanceCalls < 3)
                         streak++;
-                    score++;
+                    //Increases score by 1 for every 100th milliseconds
+                    if (noteHoldElpsd > noteHoldTime)
+                        score += 1 * multiplier;
                 }
 
                 if (noteLine.isMiss)
@@ -185,7 +209,7 @@ namespace RhythmGame
             }
 
             //Resets the button press to false if the player tries to hold it down.
-            foreach (GtrButton btn in keysPressed.Values)
+            foreach (GtrButton btn in KeysPressed.Values)
             {
                 if (btn.isDown && holdButton_stpWtch.ElapsedMilliseconds >= 200)
                     btn.isDown = false;
@@ -200,16 +224,16 @@ namespace RhythmGame
         //Key Down Event
         private void ButtonDownEvent(object sender, KeyEventArgs e)
         {
-            if (keysPressed.ContainsKey(e.KeyData))
-                GtrButton.KeyDownEvaluate(keysPressed[e.KeyData]);
+            if (KeysPressed.ContainsKey(e.KeyData))
+                GtrButton.KeyDownEvaluate(KeysPressed[e.KeyData]);
             holdButton_stpWtch.Start();
         }
 
         //Key Up Event
         private void ButtonUpEvent(object sender, KeyEventArgs e)
         {
-            if (keysPressed.ContainsKey(e.KeyData))
-                GtrButton.KeyUpEvaluate(keysPressed[e.KeyData]);    
+            if (KeysPressed.ContainsKey(e.KeyData))
+                GtrButton.KeyUpEvaluate(KeysPressed[e.KeyData]);    
             holdButton_stpWtch.Reset();
         }
 
