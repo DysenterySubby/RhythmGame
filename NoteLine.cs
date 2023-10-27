@@ -52,14 +52,14 @@ namespace RhythmGame
         {
             songPosition = timeStamp;
             noteList = noteListArg;
-            _holdDuration = null;
+            HoldDuration = null;
         }
         //SECOND CONSTRUCTER, USED WHEN NOTE IS TYPE OF HOLD NOTE
         public NoteLine(int timeStamp, List<Note> noteListArg, int hldDrtn)
         {
             songPosition = timeStamp;
             noteList = noteListArg;
-            _holdDuration = hldDrtn;
+            HoldDuration = hldDrtn;
         }
 
         //INSERTS THE NOTES TO THE FORM
