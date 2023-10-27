@@ -15,6 +15,7 @@ namespace RhythmGame
         public Image IdlePicture;
         public Image ActivePicture;
 
+        public bool isInvalidated = false;
         public bool isHolding = false;
         public bool isDown = false;
 
@@ -64,22 +65,31 @@ namespace RhythmGame
             return key;
         }
 
-        public static void KeyDownEvaluate(GtrButton btn, long holdElpsd)
+        public static void KeyDownEvaluate(GtrButton btn)
         {
+            //Plays the button animation if pressed
             if (!btn.isHolding)
                 btn.Image = btn.ActivePicture;
-            if (holdElpsd >= 200)
+            //Invalidates key press if the player holds the key down
+            if (GameForm.holdElpsd >= 200)
                 btn.isDown = false;
             else
                 btn.isDown = true;
-            btn.isHolding = true;
+
+            //Invalidates the key hold press if the player tries to hold the key down just after a note has just been deactivated
+            if (btn.isInvalidated)
+                btn.isHolding = false;
+            else
+                btn.isHolding = true;
         }
 
         public static void KeyUpEvaluate(GtrButton btn)
         {
             btn.Image = btn.IdlePicture;
+
             btn.isDown = false;
             btn.isHolding = false;
+            btn.isInvalidated = false;
         }
     }
 }

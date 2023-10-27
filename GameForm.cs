@@ -64,10 +64,11 @@ namespace RhythmGame
 
         bool songPlay = false;
         //Int temp score tracker
-        Label scoreText = new Label();
+        Label scoreLbl = new Label();
         int score;
-        Label streakText = new Label();
+        Label streakLbl = new Label();
         int streak;
+        Label debugLbl = new Label();
 
 
         public GameForm()
@@ -90,15 +91,20 @@ namespace RhythmGame
             }
 
             //Initializes Extra Userinterface
-            scoreText.AutoSize = true;
-            scoreText.Font = new Font("Algerian", 21, FontStyle.Bold);
-            scoreText.Text = "SCORE: ";
-            this.Controls.Add(scoreText);
+            scoreLbl.AutoSize = true;
+            scoreLbl.Font = new Font("Algerian", 21, FontStyle.Bold);
+            scoreLbl.Text = "SCORE: ";
+            this.Controls.Add(scoreLbl);
 
-            streakText.AutoSize = true;
-            streakText.Font = new Font("Algerian", 21, FontStyle.Bold);
-            streakText.Location = new Point(0, scoreText.Height);
-            this.Controls.Add(streakText);
+            streakLbl.AutoSize = true;
+            streakLbl.Font = new Font("Algerian", 21, FontStyle.Bold);
+            streakLbl.Location = new Point(0, scoreLbl.Height);
+            this.Controls.Add(streakLbl);
+
+            debugLbl.AutoSize = true;
+            debugLbl.Font = new Font("Algerian", 21, FontStyle.Bold);
+            debugLbl.Location = new Point(0, scoreLbl.Height+streakLbl.Height);
+            this.Controls.Add(debugLbl);
 
             //Initializes Core Game Events
             gameTimer = new Timer();
@@ -108,11 +114,9 @@ namespace RhythmGame
             this.KeyUp += new KeyEventHandler(ButtonUpEvent);
             this.Load += new EventHandler(GameOnLoad);
 
-            
-            
         }
 
-        //Loads and generate game objects from Charts
+        
         private async void GameOnLoad(object sender, EventArgs e)
         {
             player = new SoundPlayer($"{Directory.GetCurrentDirectory()}\\assets\\blink-182 - Dammit.wav");
@@ -122,8 +126,10 @@ namespace RhythmGame
             program_stpWtch.Start();
         }
 
+        //Game Time Event, all of game logic comes from this event.
         private void GameTimerEvent(object sender, EventArgs e)
         {
+            //Variables used for calculations
             holdElpsd = holdButton_stpWtch.ElapsedMilliseconds;
             gameRunTime = Convert.ToInt32(program_stpWtch.ElapsedMilliseconds);
             deltaTime = gameRunTime - previous_frameTime;
@@ -134,6 +140,7 @@ namespace RhythmGame
                 songPlay = true;
             }
 
+            //For Inserting Notes in the U.I.
             foreach (NoteLine noteLine in noteCollection.ToArray())
             {
                 if (gameRunTime + 3000 >= noteLine.songPosition)
@@ -154,45 +161,51 @@ namespace RhythmGame
                 //Synchronization of the note movement based on current song position.
                 float progress = (float)(noteLine.songPosition - gameRunTime) / moveDuration;
                 int noteY = (int)Math.Round(0 + ((0 - endY) * progress));
-                //Input and Scoring Evaluation.
 
-                //NORMAL NOTE CHECK INPUT
+                //---INPUT AND SCORING EVALUATION---
+                //Single Note Input Check
                 if (noteLine.isActive && !noteLine.isHoldType && noteLine.ButtonDown())
                 {
                     score++;
                     streak++;
                 }
                 
-                //HOLD NOTE INPUT CHECK
+                //Hold Note Input Check
                 else if (noteLine.isActive && noteLine.isHoldType && noteLine.ButtonHold())
                 {
-                    score += Convert.ToInt32(holdElpsd / 100);
+                    if(noteLine.InstanceCalls < 3)
+                        streak++;
+                    score++;
                 }
 
                 if (noteLine.isMiss)
                     streak = 0;
 
-
                 noteLine.Animate(this, noteY, endY);
             }
 
+            //Resets the button press to false if the player tries to hold it down.
             foreach (GtrButton btn in keysPressed.Values)
             {
-                if (holdButton_stpWtch.ElapsedMilliseconds >= 200 && btn.isDown)
+                if (btn.isDown && holdButton_stpWtch.ElapsedMilliseconds >= 200)
                     btn.isDown = false;
             }
+            
             previous_frameTime = gameRunTime;
-            scoreText.Text = $"Score: {score}";
-            streakText.Text = $"Streak: {streak}";
+
+            scoreLbl.Text = $"Score: {score}";
+            streakLbl.Text = $"Streak: {streak}";
         }
         
+        //Key Down Event
         private void ButtonDownEvent(object sender, KeyEventArgs e)
         {
             if (keysPressed.ContainsKey(e.KeyData))
-                GtrButton.KeyDownEvaluate(keysPressed[e.KeyData], holdButton_stpWtch.ElapsedMilliseconds);
+                GtrButton.KeyDownEvaluate(keysPressed[e.KeyData]);
             holdButton_stpWtch.Start();
         }
 
+        //Key Up Event
         private void ButtonUpEvent(object sender, KeyEventArgs e)
         {
             if (keysPressed.ContainsKey(e.KeyData))
@@ -200,6 +213,7 @@ namespace RhythmGame
             holdButton_stpWtch.Reset();
         }
 
+        //Loads and generate game objects from Charts
         private void LoadLevel()
         {
             for (int r = 0; r < Chart.GetLength(0); r++)

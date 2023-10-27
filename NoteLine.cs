@@ -20,6 +20,9 @@ namespace RhythmGame
         private bool _isMiss = false;
         public bool isMiss { get { return _isMiss; } }
 
+        private int _instanceCalls = 0;
+
+        public int InstanceCalls {  get { return _instanceCalls; } }
 
         private int? _holdDuration;
         public int? HoldDuration
@@ -46,8 +49,6 @@ namespace RhythmGame
             get { return _isHoldType; }
         }
 
-
-
         //FIRST CONSTRUCTER, USED WHEN NOTE IS NOT TYPE OF HOLD NOTE
         public NoteLine(int timeStamp, List<Note> noteListArg)
         {
@@ -73,15 +74,13 @@ namespace RhythmGame
                 form.Controls.Add(note);
             }
         }
-
-        //
-        int instanceActive = 0;
+        
         public void Animate(Form form, int newY, int endY)
         {
-            if (!isActive && newY >= endY - 50 && instanceActive < 1)
+            if (!isActive && newY >= endY - 50 && _instanceCalls < 1)
             {
                 isActive = true;
-                instanceActive++;
+                _instanceCalls++;
             }
             
             foreach (Note note in noteList)
@@ -102,11 +101,8 @@ namespace RhythmGame
                     //ANIMATES THE LINE OF THE HOLD NOTE AFTER COMPLETELY DISPOSING IT
                     if (_isHoldType)
                     {
-                        if (!isActive && instanceActive < 2)
-                        {
+                        if (!isActive && note.Line.BackColor != Color.Gray)
                             note.Line.BackColor = Color.Gray;
-                            instanceActive++;
-                        }
                             
                         note.Line.Size = new Size(10, note.Line.Height - GameForm.deltaTime);
                         note.Line.Location = new Point(note.Line.Location.X, 500 - note.Line.Size.Height);
@@ -131,9 +127,7 @@ namespace RhythmGame
             }
             isActive = false;
             if (trueCount == noteList.Count)
-            {
                 return true;
-            }
             _isMiss = true;
             return false;
         }
@@ -142,19 +136,26 @@ namespace RhythmGame
         {
             int trueCount = 0;
             foreach (Note note in noteList)
-            {
                 if (GameForm.keysPressed[note.KeyBind].isHolding)
                     trueCount++;
-            }
-            if (trueCount == noteList.Count && GameForm.holdElpsd <= _holdDuration)
+            //Miss Input Validator
+            if (_instanceCalls == 1 && (trueCount != noteList.Count || GameForm.holdElpsd >= _holdDuration))
+                _isMiss = true;
+            else if (trueCount == noteList.Count && GameForm.holdElpsd <= _holdDuration)
+            {
+                _instanceCalls++;
                 return true;
+            }
 
-            Console.WriteLine("False!");
-            foreach (GtrButton btn in GameForm.keysPressed.Values)
-                btn.isHolding = false;
-
-            _isMiss = true;
+            foreach (Note note in noteList)
+            {
+                GameForm.keysPressed[note.KeyBind].isInvalidated = true;
+                GameForm.keysPressed[note.KeyBind].isHolding = false;
+            }
+                
             isActive = false;
+
+            Console.WriteLine($"Miss: {isMiss}\nInstance Calls: {_instanceCalls}");
             return false;
         }
     }
