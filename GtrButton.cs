@@ -86,7 +86,6 @@ namespace RhythmGame
         public static void KeyUpEvaluate(GtrButton btn)
         {
             btn.Image = btn.IdlePicture;
-
             btn.isDown = false;
             btn.isHolding = false;
             btn.isInvalidated = false;

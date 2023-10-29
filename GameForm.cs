@@ -9,18 +9,20 @@ using System.IO;
 using System.Diagnostics;
 
 using System.Media;
+using System.Text.RegularExpressions;
 
 namespace RhythmGame
 {
+
+    enum NoteType
+    {
+        standard,
+        twox
+    }
     internal class GameForm : Form
     {
-        //Temporary: chart for the level
-        private string[,] Chart = new string[,]
-        {{"3000", "g", null, null}, {"3200", "g", null, null}, {"3400", null, "r", null}, {"3600", null, "r", null}, {"3800", null, null, "y"},
-        {"4000", "r", null, null},{"4200","r", null, null }, {"4400", "y", null, null}, {"4600", "y", null, null}, {"5000", "b", null, null},
-        {"5200", "g", null, null},{"5400", "g", null, null}, {"5600", null, "r", null}, {"5800", null, "r", null}, {"6100",null, "y", null},
-        {"6300", "r", null, null},{"6500", "r", null, null}, {"6700", null, "y", null}, {"6900", null, "y", null}, {"7100:200","b", null, null}};
 
+        
 
         //Soundplayer object
         private SoundPlayer player;
@@ -58,9 +60,9 @@ namespace RhythmGame
         private List<NoteLine> noteCollection = new List<NoteLine>();
 
 
+        private List<List<NoteLine>> specialNoteLine = new List<List<NoteLine>>();
         bool songPlay = false;
 
-        //Int temp score tracker
         Label scoreLbl = new Label();
         int score;
         Label streakLbl = new Label();
@@ -71,21 +73,14 @@ namespace RhythmGame
         {
             get
             {
-                if (streak <= 10)
-                    return 2;
-                else if (streak <= 20)
-                    return 4;
-                else if (streak <= 30)
-                    return 6;
-                else if (streak <= 40)
-                    return 8;
-                else if (streak <= 50)
-                    return 10;
-                else
-                    return 1;
+                if (streak >= 10 && streak < 20) return 2;
+                else if (streak >= 20 && streak < 30) return 4;
+                else if (streak >= 30 && streak < 40) return 6;
+                else if (streak >= 40 && streak < 50) return 8;
+                else if (streak >= 50) return 10;
+                else return 1;
             }
         }
-
 
         public GameForm()
         {
@@ -132,10 +127,9 @@ namespace RhythmGame
 
         }
 
-        
         private async void GameOnLoad(object sender, EventArgs e)
         {
-            player = new SoundPlayer($"{Directory.GetCurrentDirectory()}\\assets\\blink-182 - Dammit.wav");
+            player = new SoundPlayer($"{Directory.GetCurrentDirectory()}\\levels\\blink-182 - Dammit\\blink-182 - Dammit.wav");
 
             await Task.Run(() => LoadLevel());
             gameTimer.Start();
@@ -184,7 +178,7 @@ namespace RhythmGame
                 if (noteLine.isActive && !noteLine.isHoldType && noteLine.ButtonDown())
                 {
                     streak++;
-                    score += 1 * multiplier;
+                    score += noteLine.Points * multiplier;
                 }
                 
                 //Hold Note Input Check
@@ -199,21 +193,26 @@ namespace RhythmGame
                         streak++;
                     //Increases score by 1 for every 100th milliseconds
                     if (noteHoldElpsd > noteHoldTime)
-                        score += 1 * multiplier;
+                        score += noteLine.Points * multiplier;
                 }
 
                 if (noteLine.isMiss)
+                {
                     streak = 0;
-
+                    if (noteLine.Type != NoteType.standard)
+                    {
+                        foreach (NoteLine specialNL in specialNoteLine.ElementAt(0))
+                            specialNL.UpdateLine(NoteType.standard);
+                        specialNoteLine.RemoveAt(0);
+                    }
+                }
                 noteLine.Animate(this, noteY, endY);
             }
 
             //Resets the button press to false if the player tries to hold it down.
             foreach (GtrButton btn in KeysPressed.Values)
-            {
                 if (btn.isDown && holdButton_stpWtch.ElapsedMilliseconds >= 200)
                     btn.isDown = false;
-            }
             
             previous_frameTime = gameRunTime;
 
@@ -240,33 +239,21 @@ namespace RhythmGame
         //Loads and generate game objects from Charts
         private void LoadLevel()
         {
-            for (int r = 0; r < Chart.GetLength(0); r++)
+            NoteType noteType = NoteType.standard;
+            foreach (var line in File.ReadLines($"{Directory.GetCurrentDirectory()}\\levels\\blink-182 - Dammit\\Expert.txt"))
             {
-                List<Note> noteList = new List<Note>();
-                NoteLine noteLine;
-                string timeStamp = Chart[r, 0];
-
-                for (int c = 1; c < Chart.GetLength(1); c++)
+                if (line.Contains("start") && Enum.TryParse(line.Remove(line.IndexOf("|")).ToLower(), out noteType))
                 {
-                    Note newNote;
-                    if (Chart[r, c] != null)
-                    {
-                        char color = char.Parse(Chart[r, c]);
-                        newNote = new Note(color);
-                        noteList.Add(newNote);
-                    }
+                    if (noteType != NoteType.standard)
+                        specialNoteLine.Add(new List<NoteLine>());
+                    continue;
                 }
 
-                if (!timeStamp.Contains(":"))
-                    noteLine = new NoteLine(Convert.ToInt32(timeStamp), noteList);
-                else
-                {
-                    int[] data = timeStamp.Split(':').Select(s => int.Parse(s)).ToArray();
-                    noteLine = new NoteLine(data[0], noteList, data[1]);
-                }
+                NoteLine noteLine = new NoteLine(line, noteType);
+                if (noteType != NoteType.standard)
+                    specialNoteLine.ElementAt(specialNoteLine.Count - 1).Add(noteLine);
                 noteCollection.Add(noteLine);
             }
-            Array.Clear(Chart, 0, Chart.GetLength(0));
         }
     }
 }

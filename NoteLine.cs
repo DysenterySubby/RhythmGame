@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Drawing;
+using System.Drawing.Text;
 using System.Linq;
 using System.Reflection.Emit;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -11,68 +14,85 @@ namespace RhythmGame
 {
     internal class NoteLine
     {
-        private List<Note> noteList;
-        public int songPosition;
-        
-
+        private List<Note> noteList = new List<Note>();
+        public long songPosition;
         public bool isActive = false;
-
         private bool _isMiss = false;
         public bool isMiss { get { return _isMiss; } }
-
         private int _instanceCalls = 0;
         public int InstanceCalls {  get { return _instanceCalls; } }
-
-        private int? _holdDuration;
-        public int? HoldDuration
+        private int _holdDuration;
+        public int HoldDuration
         {
             get { return _holdDuration; }
-            set
+            private set
             {
-                if (value == null)
-                {
-                    _holdDuration = null;
-                    _isHoldType = false;
-                }
-                else
-                {
-                    _holdDuration = int.Parse(value.ToString());
-                    _isHoldType = true;
-                }
+                _holdDuration = value;
+                _isHoldType = true;
             }
         }
         private bool _isHoldType = false;
-        public bool isHoldType
+        public bool isHoldType { get { return _isHoldType; } }
+        public int Points { get { return noteList.Count * _specialMultiplier; } }
+        private int _specialMultiplier = 1;
+        private NoteType _type;
+        public NoteType Type
         {
-            get { return _isHoldType; }
+            get { return _type; }
+            private set
+            {
+                _type = value;
+                if (value == NoteType.twox)
+                    _specialMultiplier = 2;
+                else
+                    _specialMultiplier = 1;
+            }
         }
 
-        //FIRST CONSTRUCTER, USED WHEN NOTE IS NOT TYPE OF HOLD NOTE
-        public NoteLine(int timeStamp, List<Note> noteListArg)
+        //CONSTRUCTOR
+        public NoteLine(string lineInfo, NoteType noteType)
         {
-            songPosition = timeStamp;
-            noteList = noteListArg;
-            HoldDuration = null;
-        }
-        //SECOND CONSTRUCTER, USED WHEN NOTE IS TYPE OF HOLD NOTE
-        public NoteLine(int timeStamp, List<Note> noteListArg, int hldDrtn)
+            Type = noteType;
+            ParseLineInfo(lineInfo, noteType);
+        } 
+
+        private void ParseLineInfo(string lineInfo, NoteType noteType)
         {
-            songPosition = timeStamp;
-            noteList = noteListArg;
-            HoldDuration = hldDrtn;
+            var dataResult = lineInfo.Split(';');
+
+            if (!long.TryParse(dataResult[0], out songPosition))
+            {
+                Console.WriteLine(dataResult[0]);
+                songPosition = Convert.ToInt64(dataResult[0].Split(':')[0]);
+                HoldDuration = Convert.ToInt32(dataResult[0].Split(':')[1]);
+            }
+
+            var notesTemp =
+                from note in dataResult[1]
+                where Regex.IsMatch(Convert.ToString(note), @"[grybo]")
+                select note;
+
+            foreach (var color in notesTemp)
+            {
+                Note newNote = new Note(color, noteType);
+                if (_isHoldType)
+                    newNote.Line = new HoldLine((int)_holdDuration);
+                noteList.Add(newNote);
+            }
         }
 
-        //INSERTS THE NOTES TO THE FORM
+        //INSERTS THE NOTES TO THE WINDOWS FORM
         public void InsertToControl(Form form)
         {
             foreach (Note note in noteList)
             {
                 if (_isHoldType)
-                    form.Controls.Add(note.Line = new HoldLine(Convert.ToInt32(_holdDuration)));
+                    form.Controls.Add(note.Line);
                 form.Controls.Add(note);
             }
         }
         
+        //ANIMATES A ROW OF NOTE"S MOVEMENT FROM TOP TO BOTTOM
         public void Animate(Form form, int newY, int endY)
         {
             if (!isActive && newY >= endY - 50 && _instanceCalls < 1)
@@ -115,14 +135,23 @@ namespace RhythmGame
             }
         }
 
+
+        //Updates the type of note
+        public void UpdateLine(NoteType newType)
+        {
+            Type = newType;
+            foreach (Note note in noteList)
+                note.UpdateNote(newType);
+        }
+
+
+        //HIT OR MISS NOTE CHECKER - FOR NORMAL TAP NOTES
         public bool ButtonDown()
         {
             int trueCount = 0;
             foreach (Note note in noteList)
-            {
                 if (GameForm.KeysPressed[note.KeyBind].isDown)
                     trueCount++;
-            }
             isActive = false;
             if (trueCount == noteList.Count)
                 return true;
@@ -130,6 +159,7 @@ namespace RhythmGame
             return false;
         }
 
+        //HIT OR MISS NOTE CHECKER - FOR HOLD NOTES
         public bool ButtonHold()
         {
             int trueCount = 0;
@@ -145,6 +175,7 @@ namespace RhythmGame
                 return true;
             }
 
+            //Clears Button State
             foreach (Note note in noteList)
             {
                 GameForm.KeysPressed[note.KeyBind].isInvalidated = true;

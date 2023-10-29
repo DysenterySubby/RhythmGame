@@ -11,8 +11,7 @@ namespace RhythmGame
 {
     internal class Note : Panel
     {
-        
-        
+
         private HoldLine _line;
 
         private int _xPos;
@@ -36,41 +35,45 @@ namespace RhythmGame
             }
         }
 
-        public Note(char noteColor)
+
+        private string _colorString;
+        public Note(char noteColor, NoteType noteType)
         {
             switch (noteColor)
             {
                 case 'g':
-                    _noteImage = Image.FromFile($"{imagesDir}\\green_note_standard.png");
+                    _colorString = "green";
                     _color = Color.Green;
                     _xPos = 65;
                     _keyBind = Keys.A;
                     break;
                 case 'r':
-                    _noteImage = Image.FromFile($"{imagesDir}\\red_note_standard.png");
+                    _colorString = "red";
                     _color = Color.Red;
                     _xPos = 165;
                     _keyBind = Keys.S;
                     break;
                 case 'y':
-                    _noteImage = Image.FromFile($"{imagesDir}\\yellow_note_standard.png");
+                    _colorString = "yellow";
                     _color = Color.Yellow;
                     _xPos = 265;
                     _keyBind = Keys.J;
                     break;
                 case 'b':
-                    _noteImage = Image.FromFile($"{imagesDir}\\blue_note_standard.png");
+                    _colorString = "blue";
                     _color = Color.Blue;
                     _xPos = 365;
                     _keyBind = Keys.K;
                     break;
                 case 'o':
-                    _noteImage = Image.FromFile($"{imagesDir}\\orange_note_standard.png");
+                    _colorString = "orange";
                     _color = Color.Orange;
                     _xPos = 465;
                     _keyBind = Keys.L;
                     break;
             }
+
+            _noteImage = Image.FromFile($"{imagesDir}\\{_colorString}_note_{noteType}.png");
 
             this.Size = new Size(_noteImage.Height, _noteImage.Width);
             this.Location = new Point(_xPos, 0);
@@ -78,6 +81,12 @@ namespace RhythmGame
             //Note Events
             this.Paint += new PaintEventHandler(Note_Paint);
             this.ControlRemoved += new ControlEventHandler(OnNoteDestroy);
+        }
+
+        public void UpdateNote(NoteType newType)
+        {
+            _noteImage = Image.FromFile($"{imagesDir}\\{_colorString}_note_{newType}.png");
+            this.Invalidate();
         }
         private void OnNoteDestroy(object sender, ControlEventArgs e)
         {
