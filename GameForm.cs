@@ -164,9 +164,15 @@ namespace RhythmGame
 
             foreach (NoteLine noteLine in highwayList.ToArray())
             {
+                
                 int moveDuration = 500;
-                int input_offset = 10;
+                int input_offset = 0;
                 int endY = 550 - input_offset;
+
+                if (noteLine.isHoldType)
+                {
+                    Console.WriteLine($"{noteLine.isActive}: {gameRunTime}");
+                }
 
                 //Synchronization of the note movement based on current song position.
                 float progress = (float)(noteLine.songPosition - gameRunTime) / moveDuration;
@@ -184,18 +190,16 @@ namespace RhythmGame
                 //Hold Note Input Check
                 else if (noteLine.isActive && noteLine.isHoldType && noteLine.ButtonHold())
                 {
-                    //Computation for how long the player should hold the note
+                    //Computation for how much points the user will be given
                     double noteHoldElpsd = (double)(holdElpsd + DeltaTime) / 100;
                     double noteHoldTime = Math.Ceiling((double)holdElpsd / 100);
-
                     //Increase streak on the very first time collision is detected
-                    if (noteLine.InstanceCalls < 3)
+                    if (noteLine.StreakEnabled)
                         streak++;
                     //Increases score by 1 for every 100th milliseconds
                     if (noteHoldElpsd > noteHoldTime)
                         score += noteLine.Points * multiplier;
                 }
-
                 if (noteLine.isMiss)
                 {
                     streak = 0;
@@ -240,6 +244,7 @@ namespace RhythmGame
         private void LoadLevel()
         {
             NoteType noteType = NoteType.standard;
+            
             foreach (var line in File.ReadLines($"{Directory.GetCurrentDirectory()}\\levels\\blink-182 - Dammit\\Expert.txt"))
             {
                 if (line.Contains("start") && Enum.TryParse(line.Remove(line.IndexOf("|")).ToLower(), out noteType))

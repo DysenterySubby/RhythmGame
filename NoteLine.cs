@@ -19,8 +19,18 @@ namespace RhythmGame
         public bool isActive = false;
         private bool _isMiss = false;
         public bool isMiss { get { return _isMiss; } }
-        private int _instanceCalls = 0;
-        public int InstanceCalls {  get { return _instanceCalls; } }
+        private int _stateChangeCount = 0;
+        public bool StreakEnabled
+        {
+            get
+            {
+                if (_stateChangeCount == 3)
+                    return true;
+                else
+                    return
+                        false;
+            }
+        }
         private int _holdDuration;
         public int HoldDuration
         {
@@ -71,7 +81,7 @@ namespace RhythmGame
                 from note in dataResult[1]
                 where Regex.IsMatch(Convert.ToString(note), @"[grybo]")
                 select note;
-
+            //creates note here
             foreach (var color in notesTemp)
             {
                 Note newNote = new Note(color, noteType);
@@ -92,13 +102,13 @@ namespace RhythmGame
             }
         }
         
-        //ANIMATES A ROW OF NOTE"S MOVEMENT FROM TOP TO BOTTOM
+        //ANIMATES A ROW OF NOTE'S MOVEMENT FROM TOP TO BOTTOM
         public void Animate(Form form, int newY, int endY)
         {
-            if (!isActive && newY >= endY - 50 && _instanceCalls < 1)
+            if (!isActive && newY >= endY - 50 && _stateChangeCount == 0)
             {
                 isActive = true;
-                _instanceCalls++;
+                _stateChangeCount++;
             }
             
             foreach (Note note in noteList)
@@ -107,16 +117,17 @@ namespace RhythmGame
                 if (_isHoldType && newY <= endY)
                     note.Line.Location = new Point(note.Line.Location.X, note.Location.Y - note.Line.Size.Height);
 
-                //WILL DISPOSE THE NOTE FROM THE FORM AFTER REACHING THE END Y LOCATION
+                //DISPOSES THE NOTE FROM THE FORM AFTER REACHING THE END Y LOCATION
                 if (newY >= endY) 
                 {
+                    if(isActive && _stateChangeCount == 1)
+                        isActive = false;
                     if (!_isHoldType)
                         GameForm.highwayList.Remove(this);
-                    //DISPOSES AND REMOVES THE NOTE FROM THE FORM AFTER REACHING ENDPOINT 
                     form.Controls.Remove(note); 
                     note.Dispose();
 
-                    //ANIMATES THE LINE OF THE HOLD NOTE AFTER COMPLETELY DISPOSING IT
+                    //ANIMATES THE NOTE'S LINE OF THE HOLD NOTE BEFORE COMPLETELY DISPOSING IT
                     if (_isHoldType)
                     {
                         if (!isActive && note.Line.BackColor != Color.Gray)
@@ -136,7 +147,7 @@ namespace RhythmGame
         }
 
 
-        //Updates the type of note
+        //Updates the type of note and it's  picture
         public void UpdateLine(NoteType newType)
         {
             Type = newType;
@@ -152,9 +163,12 @@ namespace RhythmGame
             foreach (Note note in noteList)
                 if (GameForm.KeysPressed[note.KeyBind].isDown)
                     trueCount++;
-            isActive = false;
             if (trueCount == noteList.Count)
+            {
+                isActive = false;
                 return true;
+            }
+                
             _isMiss = true;
             return false;
         }
@@ -167,22 +181,22 @@ namespace RhythmGame
                 if (GameForm.KeysPressed[note.KeyBind].isHolding)
                     trueCount++;
             //Miss Input Validator
-            if (_instanceCalls == 1 && (trueCount != noteList.Count || GameForm.holdElpsd >= _holdDuration))
+            if (_stateChangeCount == 1 && (trueCount != noteList.Count || GameForm.holdElpsd >= _holdDuration))
+            {
                 _isMiss = true;
+                isActive = false;
+            }
             else if (trueCount == noteList.Count && GameForm.holdElpsd <= _holdDuration)
             {
-                _instanceCalls++;
+                _stateChangeCount++;
                 return true;
             }
-
             //Clears Button State
             foreach (Note note in noteList)
             {
                 GameForm.KeysPressed[note.KeyBind].isInvalidated = true;
                 GameForm.KeysPressed[note.KeyBind].isHolding = false;
             }
-
-            isActive = false;
             return false;
         }
     }
